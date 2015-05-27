@@ -16,6 +16,7 @@
 #include "Event.h"
 #include "Environment.h"
 
+// TEST
 ElevatorLogic::ElevatorLogic() : EventHandler("ElevatorLogic"), moved_(false) {
 }
 
