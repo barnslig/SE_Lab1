@@ -23,7 +23,7 @@ int getDistance(Floor* f1, Floor* f2, double pos = 0.5)
 	Floor *dummy = f1;
 
 	if (f1 == f2)
-		return abs(d - (f1->GetHeight() / 2));
+		return (f1->GetHeight() / 2)-d;
 
 	if (f1->IsBelow(f2))
 	{
@@ -63,6 +63,7 @@ void ElevatorLogic::sendToFloor(Elevator* ele, Floor* floor, Environment& env)
 	{
 		env.SendEvent("Elevator::Down", 0, this, ele);
 	}
+	
 	if (it->second.stop_ID != -1)
 		env.CancelEvent(it->second.stop_ID);
 	it->second.stop_ID = env.SendEvent("Elevator::Stop", abs(dist) / ele->GetSpeed(), this, ele);
@@ -126,18 +127,26 @@ void ElevatorLogic::HandleInterfaceNotify(Environment &env, const Event &e) {
 	Interface	*interf = static_cast<Interface*>(e.GetSender());
 	Loadable	*loadable = interf->GetLoadable(0);
 	Person		*pers = static_cast<Person*>(e.GetEventHandler());
-	Floor		*start_floor = pers->GetCurrentFloor();
-	
+	Floor		*floor = pers->GetCurrentFloor();
+	Elevator	*ele;
+	TARGET_TYPE type;
+	// Call for Elevator
 	if (loadable->GetType() == "Elevator") 
 	{
-		
-		Elevator *ele = static_cast<Elevator*>(loadable);
-		std::map<const Elevator*, EleInfo>::iterator it = registerElevator(ele);
-		insertTarget(ele, start_floor, &(it->second.targetFloors), FETCH);
-		
-		// WAYYY Too Complicated call but eh 
-		sendToFloor(ele, it->second.targetFloors.begin()->first, env);
+		ele = static_cast<Elevator*>(loadable);
+		floor = pers->GetCurrentFloor();
+		type = FETCH;
+	} 
+	// Call to Floor
+	else
+	{
+		floor = static_cast<Floor*>(loadable);
+		ele = pers->GetCurrentElevator();
+		type = DESTINATION;
 	}
+	std::map<const Elevator*, EleInfo>::iterator it = registerElevator(ele);
+	insertTarget(ele, floor, &(it->second.targetFloors), type);
+	sendToFloor(ele, it->second.targetFloors.begin()->first, env);
 }
 
 void ElevatorLogic::HandleStopped(Environment &env, const Event &e) {
@@ -168,17 +177,18 @@ void ElevatorLogic::HandleStopped(Environment &env, const Event &e) {
 void ElevatorLogic::HandleOpened(Environment &env, const Event &e) {
 
 	Elevator *ele = static_cast<Elevator*>(e.GetSender());
-	std::map<const Elevator*, EleInfo>::iterator it = registerElevator(ele);
-	it->second.targetFloors.pop_front();
+	//std::map<const Elevator*, EleInfo>::iterator it = registerElevator(ele);
+	//it->second.targetFloors.pop_front();
 
 	std::cout << "Opening at Floor: " << ele->GetCurrentFloor()->GetId() << std::endl;
 	std::cout << "at Poistion: " << ele->GetPosition() << std::endl;
 
 	env.SendEvent("Elevator::Close", 3, this, ele);
+
 }
 
 void ElevatorLogic::HandleClosed(Environment &env, const Event &e) {
-	//std::cout << "-1" << std::endl;
+	std::cout << "-1" << std::endl;
 	
 	Elevator *ele = static_cast<Elevator*>(e.GetSender());
 	std::map<const Elevator*, EleInfo>::iterator it = registerElevator(ele);
@@ -215,6 +225,8 @@ void ElevatorLogic::HandleOpening(Environment &env, const Event &e) {
 	Elevator *ele = static_cast<Elevator*>(e.GetSender());
 	Elevator::Movement state = ele->GetState();
 	
+	std::cout << "WUT" << std::endl;
+
 	if (!isMiddle(ele->GetPosition()) || state == Elevator::Up || state == Elevator::Down)
 	{
 		if (e.GetTime() > env.GetClock())
@@ -230,9 +242,9 @@ void ElevatorLogic::HandleMalfunction(Environment &env, const Event &e)
 	Elevator *ele = static_cast<Elevator*>(e.GetSender());
 	Elevator::Movement state = ele->GetState();
 	
-	registerElevator(ele);
+	std::map<const Elevator*, EleInfo>::iterator it = registerElevator(ele);
 
-	eleInfos.find(ele)->second.last_state = state;
+	it->second.last_state = state;
 
 	env.SendEvent("Elevator::Stop", 0, this, ele);
 }
@@ -266,7 +278,7 @@ void ElevatorLogic::HandleEntered(Environment &env, const Event &e)
 	it->second.load += prs->GetWeight();
 	
 	//it->second.targetFloors.insert(it->second.targetFloors.begin(),prs->GetFinalFloor());
-	insertTarget(ele, prs->GetFinalFloor(), &(it->second.targetFloors),DESTINATION);
+	//insertTarget(ele, prs->GetFinalFloor(), &(it->second.targetFloors),DESTINATION);
 	if (it->second.load > ele->GetMaxLoad())
 	{
 		it->second.overloaded = true;
@@ -276,7 +288,11 @@ void ElevatorLogic::HandleEntered(Environment &env, const Event &e)
 	std::list<Floor_Pair>::iterator Floor_it = it->second.targetFloors.begin();
 	while (Floor_it != it->second.targetFloors.end())
 	{
+		/*
 		std::cout << "BLUB" << std::endl;
+		std::cout << ele->GetCurrentFloor()->GetId() << "/" << Floor_it->first->GetId() << std::endl;
+		std::cout << Floor_it->second<< "/" << FETCH << std::endl;
+		*/
 		if (Floor_it->first == ele->GetCurrentFloor() && Floor_it->second == FETCH)
 		{
 			std::cout << "Removed \"Fetch-Floor\" from Queue: " << Floor_it->first->GetId() << std::endl;
