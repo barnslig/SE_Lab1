@@ -16,6 +16,9 @@
 #include "Event.h"
 #include "Environment.h"
 
+<<<<<<< HEAD
+// TEST
+=======
 
 int getDistance(Floor* f1, Floor* f2, double pos = 0.5)
 {
@@ -104,6 +107,7 @@ void ElevatorLogic::insertTarget(Elevator* ele, Floor* target, std::list<Floor_P
 	
 }
 
+>>>>>>> origin/master
 ElevatorLogic::ElevatorLogic() : EventHandler("ElevatorLogic"), moved_(false) {
 }
 
