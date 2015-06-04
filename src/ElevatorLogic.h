@@ -16,6 +16,9 @@
 #include <map>
 #include <set>
 
+
+#define VERBOSE true
+
 class Elevator;
 class Floor;
 class Interface;
@@ -59,19 +62,18 @@ private:
 	void HandleFixed(Environment &env, const Event &e);
 	void HandleEntered(Environment &env, const Event &e);
 	void HandleExited(Environment &env, const Event &e);
-	
+	void HandleMoving(Environment &env, const Event &e);
 	
 	bool isMiddle(double pos) { return (pos > 0.5f - FLOATING_EPSILON && pos < 0.5f + FLOATING_EPSILON); }
 
-	bool moved_;
+	
+	std::map<Elevator*, EleInfo> eleInfos;
 
-	std::map<const Elevator*, EleInfo> eleInfos;
-
-	std::map<const Elevator*, EleInfo>::iterator registerElevator(Elevator* ele)
+	std::map<Elevator*, EleInfo>::iterator registerElevator(Elevator* ele)
 	{
 		if (eleInfos.find(ele) == eleInfos.end())
 		{
-			return eleInfos.insert(std::pair<const Elevator*, EleInfo>(ele, EleInfo())).first;
+			return eleInfos.insert(std::pair<Elevator*, EleInfo>(ele, EleInfo())).first;
 		}
 		else
 			return eleInfos.find(ele);
@@ -80,6 +82,11 @@ private:
 	void sendToFloor(Elevator* ele, Floor* floor, Environment& env);
 	void insertTarget(Elevator* ele, Floor* target, std::list<Floor_Pair>* list, TARGET_TYPE type);
 	
+	void removeAllAbove(Elevator* ele, Floor* target);
+	void removeAllBelow(Elevator* ele, Floor* target);
+
+	Floor* getHighestFloor(Elevator* ele);
+	Floor* getLowestFloor(Elevator* ele);
 };
 
 #endif /* ELEVATORLOGIC_H_ */
