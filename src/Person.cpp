@@ -190,7 +190,7 @@ void Person::HandleOpened(Environment &env, const Event &e) {
 	if (elevator_) {
 
 		if (elevator_ == ele)
-			if (ele->GetPosition() > 0.49 && ele->GetPosition() < 0.51)
+			if (ele->GetPosition() > 0.49 && ele->GetPosition() < 0.51 && path_.size() > 0)
 				if (ele->GetCurrentFloor() == path_.front())
 					Exit(env);
 

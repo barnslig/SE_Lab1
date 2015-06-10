@@ -16,13 +16,12 @@
 #include <map>
 #include <set>
 
-
-#define VERBOSE true
+#define VERBOSE false
 
 class Elevator;
 class Floor;
 class Interface;
-
+class Person;
 
 class ElevatorLogic: public EventHandler {
 
@@ -39,16 +38,17 @@ private:
 		FETCH
 	};
 
-	typedef std::pair < Floor*, TARGET_TYPE > Floor_Pair;
+	typedef std::pair < Floor*, std::pair<TARGET_TYPE,Person*>> Floor_Pair;
 
 	struct EleInfo
 	{
 		int load = 0;
-		int last_state = 0;
 		bool overloaded = false;
+		bool open = false;
+		bool malfunctioning = false;
 		std::list<Floor_Pair> targetFloors;
 		int	stop_ID = -1;
-		
+		int moving_ID = -1;
 	};
 
 
@@ -60,6 +60,7 @@ private:
 	void HandleOpening(Environment &env, const Event &e);
 	void HandleMalfunction(Environment &env, const Event &e);
 	void HandleFixed(Environment &env, const Event &e);
+	void HandleEntering(Environment &env, const Event &e);
 	void HandleEntered(Environment &env, const Event &e);
 	void HandleExited(Environment &env, const Event &e);
 	void HandleMoving(Environment &env, const Event &e);
@@ -79,8 +80,8 @@ private:
 			return eleInfos.find(ele);
 	}
 
-	void sendToFloor(Elevator* ele, Floor* floor, Environment& env);
-	void insertTarget(Elevator* ele, Floor* target, std::list<Floor_Pair>* list, TARGET_TYPE type);
+	void sendToFloor(Elevator* ele, Floor* floor, Environment& env, int delay = 0);
+	void insertTarget(Elevator* ele, Floor* target, std::list<Floor_Pair>* list, std::pair<TARGET_TYPE, Person*> type);
 	
 	void removeAllAbove(Elevator* ele, Floor* target);
 	void removeAllBelow(Elevator* ele, Floor* target);
