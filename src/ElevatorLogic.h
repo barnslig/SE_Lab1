@@ -56,7 +56,6 @@ private:
 	void HandleStopped(Environment &env, const Event &e);
 	void HandleOpened(Environment &env, const Event &e);
 	void HandleClosed(Environment &env, const Event &e);
-	void HandleClosing(Environment &env, const Event &e);
 	void HandleOpening(Environment &env, const Event &e);
 	void HandleMalfunction(Environment &env, const Event &e);
 	void HandleFixed(Environment &env, const Event &e);
@@ -81,7 +80,7 @@ private:
 	}
 
 	void sendToFloor(Elevator* ele, Floor* floor, Environment& env, int delay = 0);
-	void insertTarget(Elevator* ele, Floor* target, std::list<Floor_Pair>* list, std::pair<TARGET_TYPE, Person*> type);
+	void insertTarget(Elevator* ele, Floor* target, std::list<Floor_Pair>* list, std::pair<TARGET_TYPE, Person*> type, Environment& env);
 	
 	void removeAllAbove(Elevator* ele, Floor* target);
 	void removeAllBelow(Elevator* ele, Floor* target);
