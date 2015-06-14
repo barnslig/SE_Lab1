@@ -49,6 +49,7 @@ private:
 		std::list<Floor_Pair> targetFloors;
 		int	stop_ID = -1;
 		int moving_ID = -1;
+		int closing_ID = -1;
 	};
 
 
