@@ -77,6 +77,10 @@ void ElevatorLogic::sendToFloor(Elevator* ele, Floor* floor, Environment& env, i
 					{
 						dummy = floor->GetBelow();
 					}
+					if (dummy == NULL)
+					{
+
+					}
 				}
 				else {
 					dummy = floor->GetAbove();
@@ -116,6 +120,20 @@ void ElevatorLogic::sendToFloor(Elevator* ele, Floor* floor, Environment& env, i
 			env.CancelEvent(it->second.stop_ID);
 		it->second.stop_ID = env.SendEvent("Elevator::Stop",  0 + (abs(dist) / ele->GetSpeed()), this, ele);
 	}
+}
+
+bool ElevatorLogic::isReachable(Elevator* ele, Floor* flr)
+{
+	if (!ele->HasFloor(flr))
+		return false;
+
+	int distance = getDistance(ele->GetCurrentFloor(), flr, ele->GetPosition());
+
+	if (distance % ele->GetSpeed() == 0)
+	{
+		return true;
+	}
+	return false;
 }
 
 // Removes all Queued Floors above the target Floor
@@ -184,12 +202,13 @@ Floor* ElevatorLogic::getLowestFloor(Elevator* ele)
 void ElevatorLogic::insertTarget(Elevator* ele, Floor* target, std::list<Floor_Pair>* list, std::pair<TARGET_TYPE, Person*> type, Environment& env)
 {
 	int distance = abs(getDistance(ele->GetCurrentFloor(), target, ele->GetPosition()));
-
+	int time = type.second->GetGiveUpTime();
+	
 	std::list<Floor_Pair>::iterator it = list->begin();
 
 	while (true)
 	{
-		if (it == list->end() || distance < getDistance(ele->GetCurrentFloor(), it->first, ele->GetPosition()))
+		if (it == list->end())
 		{
 			if (VERBOSE)
 			{
@@ -211,6 +230,30 @@ void ElevatorLogic::insertTarget(Elevator* ele, Floor* target, std::list<Floor_P
 			list->insert(it, Floor_Pair(target,type));
 			sendToFloor(ele, list->begin()->first, env, 0);
 			break;
+		}
+		else if (time < it->second.second->GetGiveUpTime())
+		{
+			list->insert(it, Floor_Pair(target, type));
+			sendToFloor(ele, list->begin()->first, env, 0);
+			break;
+		}
+		else if (time == it->second.second->GetGiveUpTime())
+		{
+			if (distance <= getDistance(ele->GetCurrentFloor(), it->first, ele->GetPosition()))
+			{
+				list->insert(it, Floor_Pair(target, type));
+				sendToFloor(ele, list->begin()->first, env, 0);
+				break;
+			}
+			else {
+				while (time > it->second.second->GetGiveUpTime() && distance > getDistance(ele->GetCurrentFloor(), it->first, ele->GetPosition()) && it != list->end())
+				{
+					it++;
+				}
+				list->insert(it, Floor_Pair(target, type));
+				sendToFloor(ele, list->begin()->first, env, 0);
+				break;
+			}
 		}
 		else
 		{
@@ -267,7 +310,7 @@ void ElevatorLogic::HandleInterfaceNotify(Environment &env, const Event &e) {
 		{
 			ele = static_cast<Elevator*>(interf->GetLoadable(i));
 			distance = abs(getEffectiveDist(ele, ele->GetCurrentFloor(), floor));
-			if (!registerElevator(ele)->second.malfunctioning && distance < shortestDistance)
+			if (!registerElevator(ele)->second.malfunctioning && isReachable(ele, floor) && distance < shortestDistance)
 			{
 				shortestDistance = distance;
 				finalEle = ele;
@@ -280,7 +323,7 @@ void ElevatorLogic::HandleInterfaceNotify(Environment &env, const Event &e) {
 			{
 				ele = static_cast<Elevator*>(interf->GetLoadable(i));
 				distance = abs(getEffectiveDist(ele, ele->GetCurrentFloor(), floor));
-				if (distance < shortestDistance)
+				if (isReachable(ele, floor) && distance < shortestDistance)
 				{
 					shortestDistance = distance;
 					finalEle = ele;
@@ -361,14 +404,20 @@ void ElevatorLogic::HandleEntering(Environment &env, const Event &e)
 	
 	std::map<Elevator*, EleInfo>::iterator it = registerElevator(prs->GetCurrentElevator());
 	
+	if (it->second.malfunctioning )
+	{
+		env.CancelEvent(e.GetId());
+	}
+	
 	it->second.load += prs->GetWeight();
 
 	if (it->second.load > ele->GetMaxLoad())
 	{
 		env.CancelEvent(registerElevator(ele)->second.closing_ID);
 
-		it->second.overloaded = true;
 	}
+
+	
 }
 
 
@@ -381,6 +430,7 @@ void ElevatorLogic::HandleExited(Environment &env, const Event &e)
 	
 	
 	it->second.load -= prs->GetWeight();
+	
 	if (it->second.overloaded && it->second.load < ele->GetMaxLoad())
 	{
 		it->second.overloaded = false;
@@ -405,8 +455,15 @@ void ElevatorLogic::HandleEntered(Environment& env, const Event &e)
 	Elevator* ele = static_cast<Elevator*>(e.GetEventHandler());
 	std::map<Elevator*, EleInfo>::iterator it = registerElevator(ele);
 	
-	if (it->second.overloaded)
+	
+	
+
+
+	if (it->second.load > ele->GetMaxLoad())
+	{
+		it->second.overloaded = true;
 		env.SendEvent("Elevator::Beep", 0, this, ele);
+	}
 
 	// Remove Fetch Requests for this Person
 	for (std::list<Floor_Pair>::iterator floor_it = it->second.targetFloors.begin(); floor_it != it->second.targetFloors.end(); floor_it++)
@@ -421,9 +478,11 @@ void ElevatorLogic::HandleEntered(Environment& env, const Event &e)
 
 void ElevatorLogic::HandleClosed(Environment &env, const Event &e) {
 	Elevator* ele = static_cast<Elevator*>(e.GetSender());
-	registerElevator(ele)->second.open = false;
+	std::map<Elevator*, EleInfo>::iterator it = registerElevator(ele);
+	it->second.open = false;
 
-	sendToFloor(ele, registerElevator(ele)->second.targetFloors.begin()->first, env, 0);
+	if (it->second.targetFloors.begin() != it->second.targetFloors.end())
+		sendToFloor(ele, registerElevator(ele)->second.targetFloors.begin()->first, env, 0);
 }
 
 
@@ -452,5 +511,5 @@ void ElevatorLogic::HandleFixed(Environment &env, const Event &e)
 	Elevator* ele = static_cast<Elevator*>(e.GetSender());
 	registerElevator(ele)->second.malfunctioning = false;
 
-	env.SendEvent("Elevator::Close", 1, this, ele);
+	env.SendEvent("Elevator::Close", 0, this, ele);
 }

@@ -52,7 +52,7 @@ private:
 		int closing_ID = -1;
 	};
 
-
+	
 	void HandleInterfaceNotify(Environment &env, const Event &e);
 	void HandleStopped(Environment &env, const Event &e);
 	void HandleOpened(Environment &env, const Event &e);
@@ -66,7 +66,7 @@ private:
 	void HandleMoving(Environment &env, const Event &e);
 	
 	bool isMiddle(double pos) { return (pos > 0.5f - FLOATING_EPSILON && pos < 0.5f + FLOATING_EPSILON); }
-
+	bool isReachable(Elevator* ele, Floor* flr);
 	
 	std::map<Elevator*, EleInfo> eleInfos;
 
